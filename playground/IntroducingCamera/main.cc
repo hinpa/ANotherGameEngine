@@ -5,6 +5,7 @@
 #include <fstream>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/geometric.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -174,6 +175,37 @@ void processInput(GLFWwindow *window, glm::vec3 &cameraPos, glm::vec3 &cameraFro
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+
+}
+
+
+float yaw = -90.f;
+float pitch = 0.f;
+glm::vec3 cameraFront;
+
+void mouseMovement(GLFWwindow *window, double xPos, double yPos) {
+    static float lastX = xPos, lastY = yPos;
+    float xOffset = xPos - lastX;
+    float yOffset = lastY - yPos;
+    
+    constexpr float sensitivity = 0.05f;
+    xOffset *= sensitivity;
+    yOffset *= sensitivity;
+
+    yaw += xOffset;
+    pitch += yOffset;
+
+    if (std::abs(pitch) > 89.f) // don't ever do it this way. I am lazy
+        pitch = std::abs(pitch) / pitch * 89.f;
+
+    cameraFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront.y = sin(glm::radians(pitch));
+    cameraFront.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+
+    cameraFront = glm::normalize(cameraFront);
+    lastX = xPos, lastY = yPos;
 }
 
 
@@ -248,7 +280,7 @@ int main() {
 
 
     glm::vec3 cameraPos(0.f, 0.f, 3.f);
-    glm::vec3 cameraFront(0.f,0.f,-1.f);
+    cameraFront = glm::vec3(0.f,0.f,-1.f);
     glm::vec3 cameraUp(0.,1.,0.f);
     
 
@@ -311,13 +343,14 @@ int main() {
     prog.setMat4("proj", proj);
     prog.setMat4("view", view);
 
-    
+    glfwSetCursorPosCallback(win, mouseMovement); 
+    glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
     
     while (!glfwWindowShouldClose(win)) {
-       processInput(win, cameraPos, cameraFront, cameraUp);
-       view = glm::lookAt(cameraPos, cameraFront + cameraPos, cameraUp);
+        processInput(win, cameraPos, cameraFront, cameraUp);
+        view = glm::lookAt(cameraPos, cameraFront + cameraPos, cameraUp);
 
-       prog.setMat4("view", view);
+        prog.setMat4("view", view);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         // polls different kinds of events, for example, when we close an application, it fetches that event
